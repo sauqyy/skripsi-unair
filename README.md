@@ -29,18 +29,31 @@ cp .env.example .env.local
 | `RESEND_FROM_EMAIL` | Alamat pengirim, mis. `Monitoring Skripsi <no-reply@domainkamu.com>` |
 | `CRON_SECRET` | String acak bebas — dipakai Vercel Cron untuk otorisasi endpoint reminder |
 
-## 3. Seed Akun Koordinator Pertama
+## 3. Konfigurasi Email Konfirmasi (Wajib)
+
+Secara default, project Supabase baru mewajibkan konfirmasi email sebelum akun bisa login (`Enable email confirmations` aktif). Supaya tombol konfirmasi di email mengarah ke aplikasi ini (bukan ke halaman default Supabase):
+
+1. Buka **Authentication → Email Templates → Confirm signup**.
+2. Ganti isi `{{ .ConfirmationURL }}` pada link menjadi:
+   ```
+   {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/pending
+   ```
+3. Buka **Authentication → URL Configuration**, set **Site URL** ke `http://localhost:3000` (ganti ke domain produksi saat deploy).
+
+> Catatan: kuota pengiriman email bawaan Supabase sangat terbatas (development only, beberapa email/jam). Untuk pemakaian nyata di kampus, hubungkan **custom SMTP** di **Authentication → Providers → SMTP Settings** (bisa pakai domain email kampus atau Resend).
+
+## 4. Seed Akun Koordinator Pertama
 
 Tidak ada halaman untuk mendaftar sebagai koordinator (harus dibuat manual, lihat [PLAN.md](./PLAN.md) bagian 3):
 
-1. Daftar akun biasa lewat `/register` (misal pilih peran "Mahasiswa" sementara) — atau buat user langsung dari **Authentication → Users → Add user** di Supabase Dashboard.
+1. Daftar akun biasa lewat `/register` (pilih peran apa saja, mis. "Mahasiswa") dan **konfirmasi emailnya** — atau buat & konfirmasi user langsung dari **Authentication → Users → Add user** di Supabase Dashboard.
 2. Di **SQL Editor**, jalankan:
    ```sql
    update profiles set role = 'koordinator', status = 'active' where email = 'email-koordinator@kampus.ac.id';
    ```
 3. Login dengan akun tersebut — akan otomatis diarahkan ke `/koordinator`.
 
-## 4. Menjalankan Secara Lokal
+## 5. Menjalankan Secara Lokal
 
 ```bash
 npm install
@@ -49,7 +62,7 @@ npm run dev
 
 Buka http://localhost:3000.
 
-## 5. Alur Pemakaian
+## 6. Alur Pemakaian
 
 1. **Koordinator** login → menu **Verifikasi Akun** untuk approve pendaftaran dosen/mahasiswa baru.
 2. Koordinator membuka **Assignment Bimbingan** untuk menetapkan Pembimbing 1 (wajib) & Pembimbing 2 (opsional) tiap mahasiswa.
@@ -58,7 +71,7 @@ Buka http://localhost:3000.
 5. **Mahasiswa** mengunggah draft PDF, mengajukan bimbingan, dan memantau progress di dashboard-nya.
 6. Kartu bimbingan bisa diekspor ke PDF kapan saja dari halaman Bimbingan (mahasiswa) atau detail mahasiswa (dosen).
 
-## 6. Email Reminder Deadline (Cron)
+## 7. Email Reminder Deadline (Cron)
 
 Endpoint `/api/cron/deadline-reminders` mengecek tahapan yang deadline-nya jatuh **H-7, H-3, H-1** dan mengirim email ke mahasiswa (selalu) serta dosen pembimbing (jika `email_reminder_optin` aktif, diatur di halaman Settings dosen).
 
@@ -68,13 +81,13 @@ Endpoint `/api/cron/deadline-reminders` mengecek tahapan yang deadline-nya jatuh
   curl -H "Authorization: Bearer <CRON_SECRET_kamu>" http://localhost:3000/api/cron/deadline-reminders
   ```
 
-## 7. Deploy
+## 8. Deploy
 
 1. Push ke GitHub, import project ke [Vercel](https://vercel.com).
 2. Set semua environment variable di atas pada Vercel project settings.
 3. Deploy — cron job di `vercel.json` otomatis aktif.
 
-## 8. Struktur Kode Penting
+## 9. Struktur Kode Penting
 
 ```
 supabase/migrations/0001_init.sql   # schema, RLS, storage bucket, seed data
@@ -83,6 +96,7 @@ src/lib/supabase/                   # client.ts (browser), server.ts (RSC/action
 src/lib/actions/                    # server actions: progress, bimbingan, dokumen
 src/lib/pdf/kartu-bimbingan.tsx     # template PDF kartu bimbingan
 src/app/(auth)/                     # login, register, pending
+src/app/auth/confirm/               # menyelesaikan link konfirmasi email
 src/app/koordinator/                # area koordinator
 src/app/dosen/                      # area dosen pembimbing
 src/app/mahasiswa/                  # area mahasiswa

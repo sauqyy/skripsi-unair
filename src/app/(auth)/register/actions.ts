@@ -23,6 +23,7 @@ const registerSchema = z
 
 export interface RegisterState {
   error?: string;
+  info?: string;
   fieldErrors?: Record<string, string>;
 }
 
@@ -51,16 +52,27 @@ export async function registerAction(
   const { nama, email, password, role, nim_nip, prodi } = parsed.data;
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: { nama, role, nim_nip, prodi },
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/confirm?next=/pending`,
     },
   });
 
   if (error) {
     return { error: error.message };
+  }
+
+  // If the Supabase project requires email confirmation, signUp() returns a
+  // user but no session yet — nothing to redirect into. Show a message
+  // instead and let /auth/confirm establish the session once they click the
+  // link in their inbox.
+  if (!data.session) {
+    return {
+      info: "Registrasi berhasil! Cek email kamu dan klik link konfirmasi sebelum bisa login.",
+    };
   }
 
   redirect("/pending");

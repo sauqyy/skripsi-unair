@@ -27,6 +27,11 @@ export default function RegisterPage() {
               {state.error}
             </p>
           )}
+          {state.info && (
+            <p className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">
+              {state.info}
+            </p>
+          )}
 
           <div>
             <Label htmlFor="role">Daftar sebagai</Label>
