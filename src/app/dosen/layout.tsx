@@ -2,7 +2,7 @@ import { requireRole } from "@/lib/require-role";
 import { DashboardShell, type NavItem } from "@/components/dashboard-shell";
 
 const navItems: NavItem[] = [
-  { href: "/dosen", label: "Dashboard" },
+  { href: "/dosen", label: "Dashboard", exact: true },
   { href: "/dosen/mahasiswa", label: "Mahasiswa Bimbingan" },
   { href: "/dosen/settings", label: "Settings" },
 ];

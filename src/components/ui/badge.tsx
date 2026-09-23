@@ -3,11 +3,11 @@ import { cn } from "@/lib/cn";
 type Tone = "slate" | "green" | "yellow" | "red" | "blue";
 
 const tones: Record<Tone, string> = {
-  slate: "bg-slate-100 text-slate-700",
-  green: "bg-green-100 text-green-700",
-  yellow: "bg-yellow-100 text-yellow-800",
-  red: "bg-red-100 text-red-700",
-  blue: "bg-blue-100 text-blue-700",
+  slate: "bg-slate-100 text-slate-600",
+  green: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
+  yellow: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200",
+  red: "bg-red-50 text-red-700 ring-1 ring-inset ring-red-200",
+  blue: "bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-200",
 };
 
 export function Badge({
