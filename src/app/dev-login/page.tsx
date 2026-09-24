@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { LogoMark } from "@/components/logo-mark";
 import { quickLoginAction } from "./actions";
+import { QuickLoginButton } from "./quick-login-button";
 import type { Profile, UserRole } from "@/types/database";
 
 const roleLabel: Record<UserRole, string> = {
@@ -71,16 +71,7 @@ export default async function DevLoginPage({
                     <form key={p.id} action={quickLoginAction}>
                       <input type="hidden" name="email" value={p.email} />
                       <input type="hidden" name="key" value={key ?? ""} />
-                      <button
-                        type="submit"
-                        className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-4 py-3 text-left text-sm transition-colors hover:border-brand-300 hover:bg-brand-50"
-                      >
-                        <span>
-                          <span className="block font-medium text-slate-900">{p.nama}</span>
-                          <span className="block text-xs text-slate-500">{p.email}</span>
-                        </span>
-                        <Badge tone="blue">Masuk →</Badge>
-                      </button>
+                      <QuickLoginButton nama={p.nama} email={p.email} />
                     </form>
                   ))}
                 </CardContent>
