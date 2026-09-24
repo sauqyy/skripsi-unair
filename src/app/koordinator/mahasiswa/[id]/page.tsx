@@ -3,6 +3,7 @@ import { getProgressRows } from "@/lib/get-progress-rows";
 import { ProgressTracker } from "@/components/progress-tracker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { BimbinganHistoryByStage, type BimbinganEntry } from "@/components/bimbingan-history";
 import { notFound } from "next/navigation";
 
 export default async function KoordinatorMahasiswaDetailPage({
@@ -28,7 +29,7 @@ export default async function KoordinatorMahasiswaDetailPage({
     .eq("mahasiswa_id", id)
     .maybeSingle();
 
-  const [{ data: assignments }, { data: bimbinganList }] = await Promise.all([
+  const [{ data: assignments }, { data: bimbinganList }, { data: stages }] = await Promise.all([
     supabase
       .from("bimbingan_assignments")
       .select("*, profiles!bimbingan_assignments_dosen_id_fkey(nama)")
@@ -40,10 +41,22 @@ export default async function KoordinatorMahasiswaDetailPage({
           .eq("skripsi_id", skripsi.id)
           .order("pertemuan_ke", { ascending: false })
       : Promise.resolve({ data: [] as never[] }),
+    supabase.from("stages").select("*").order("urutan"),
   ]);
 
   const progressRows = skripsi ? await getProgressRows(skripsi.id) : [];
   const redirectPath = `/koordinator/mahasiswa/${id}`;
+
+  const bimbinganEntries: BimbinganEntry[] = (bimbinganList ?? []).map((b) => ({
+    id: b.id,
+    stage_id: b.stage_id,
+    pertemuan_ke: b.pertemuan_ke,
+    tanggal: b.tanggal,
+    dosenNama: (b.profiles as unknown as { nama: string } | null)?.nama ?? "-",
+    topik: b.topik,
+    catatan_revisi: b.catatan_revisi,
+    status: b.status,
+  }));
 
   return (
     <div className="space-y-6">
@@ -109,32 +122,10 @@ export default async function KoordinatorMahasiswaDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle>Riwayat Bimbingan ({bimbinganList?.length ?? 0})</CardTitle>
+              <CardTitle>Riwayat Bimbingan per Tahap ({bimbinganList?.length ?? 0})</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {(!bimbinganList || bimbinganList.length === 0) && (
-                <p className="text-sm text-slate-400">Belum ada riwayat bimbingan.</p>
-              )}
-              {(bimbinganList ?? []).map((b) => {
-                const dosen = b.profiles as unknown as { nama: string } | null;
-                return (
-                  <div key={b.id} className="rounded-md border border-slate-100 p-3 text-sm">
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium text-slate-900">
-                        Pertemuan ke-{b.pertemuan_ke} · {b.tanggal}
-                      </p>
-                      <Badge tone={b.status === "selesai" ? "green" : b.status === "ditolak" ? "red" : "yellow"}>
-                        {b.status}
-                      </Badge>
-                    </div>
-                    <p className="mt-1 text-slate-600">Dosen: {dosen?.nama}</p>
-                    {b.topik && <p className="mt-1 text-slate-600">Topik: {b.topik}</p>}
-                    {b.catatan_revisi && (
-                      <p className="mt-1 text-slate-600">Catatan revisi: {b.catatan_revisi}</p>
-                    )}
-                  </div>
-                );
-              })}
+            <CardContent>
+              <BimbinganHistoryByStage stages={stages ?? []} entries={bimbinganEntries} />
             </CardContent>
           </Card>
         </>

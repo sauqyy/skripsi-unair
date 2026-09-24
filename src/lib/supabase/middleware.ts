@@ -43,7 +43,8 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/register") ||
     path.startsWith("/auth") ||
     path.startsWith("/_next") ||
-    path.startsWith("/api/cron"); // authorized separately via CRON_SECRET header
+    path.startsWith("/api/cron") || // authorized separately via CRON_SECRET header
+    path.startsWith("/dev-login"); // dev/demo only — the page itself 404s outside development
 
   if (!user && !isPublicPath) {
     const url = request.nextUrl.clone();

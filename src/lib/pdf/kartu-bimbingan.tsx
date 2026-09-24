@@ -24,11 +24,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: "#ccc",
   },
-  colNo: { width: "6%" },
-  colTanggal: { width: "12%" },
-  colDosen: { width: "18%" },
-  colTopik: { width: "24%" },
-  colCatatan: { width: "30%" },
+  colNo: { width: "5%" },
+  colTahap: { width: "14%" },
+  colTanggal: { width: "10%" },
+  colDosen: { width: "15%" },
+  colTopik: { width: "20%" },
+  colCatatan: { width: "26%" },
   colTtd: { width: "10%" },
   signatureBox: { marginTop: 8, height: 40 },
   footerNote: { marginTop: 20, fontSize: 8, color: "#777" },
@@ -41,6 +42,7 @@ interface Props {
   judul: string;
   pembimbing: { ke: string; nama: string }[];
   riwayat: {
+    tahap: string;
     pertemuanKe: number;
     tanggal: string;
     dosen: string;
@@ -90,6 +92,7 @@ export function KartuBimbinganDocument({
         <View style={styles.table}>
           <View style={styles.tableRow}>
             <Text style={[styles.tableHeaderCell, styles.colNo]}>No</Text>
+            <Text style={[styles.tableHeaderCell, styles.colTahap]}>Tahap</Text>
             <Text style={[styles.tableHeaderCell, styles.colTanggal]}>Tanggal</Text>
             <Text style={[styles.tableHeaderCell, styles.colDosen]}>Dosen</Text>
             <Text style={[styles.tableHeaderCell, styles.colTopik]}>Topik</Text>
@@ -110,9 +113,12 @@ export function KartuBimbinganDocument({
               </Text>
             </View>
           ) : (
-            riwayat.map((r) => (
-              <View style={styles.tableRow} key={r.pertemuanKe} wrap={false}>
-                <Text style={[styles.tableCell, styles.colNo]}>{r.pertemuanKe}</Text>
+            riwayat.map((r, i) => (
+              <View style={styles.tableRow} key={`${r.tahap}-${r.pertemuanKe}`} wrap={false}>
+                <Text style={[styles.tableCell, styles.colNo]}>{i + 1}</Text>
+                <Text style={[styles.tableCell, styles.colTahap]}>
+                  {r.tahap} (ke-{r.pertemuanKe})
+                </Text>
                 <Text style={[styles.tableCell, styles.colTanggal]}>{r.tanggal}</Text>
                 <Text style={[styles.tableCell, styles.colDosen]}>{r.dosen}</Text>
                 <Text style={[styles.tableCell, styles.colTopik]}>{r.topik}</Text>

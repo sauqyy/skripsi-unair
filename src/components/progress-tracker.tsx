@@ -28,6 +28,8 @@ export interface ProgressRow {
   status: ProgressStatus;
   deadline: string | null;
   tanggal_selesai: string | null;
+  /** Berapa kali bimbingan (status selesai) sudah terjadi untuk tahap ini. */
+  jumlahBimbingan: number;
 }
 
 export function ProgressTracker({
@@ -62,6 +64,7 @@ export function ProgressTracker({
               </p>
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <Badge tone={statusTone[row.status]}>{statusLabel[row.status]}</Badge>
+                <Badge tone="blue">{row.jumlahBimbingan}x bimbingan</Badge>
                 {row.deadline && (
                   <Badge tone={isOverdue ? "red" : "slate"}>Deadline: {row.deadline}</Badge>
                 )}

@@ -55,6 +55,14 @@ export function LoginForm() {
             Daftar
           </Link>
         </p>
+
+        {process.env.NODE_ENV !== "production" && (
+          <p className="mt-2 text-center text-sm">
+            <Link href="/dev-login" className="font-medium text-brand-600 underline">
+              Quick Login (dev) →
+            </Link>
+          </p>
+        )}
       </CardContent>
     </Card>
   );

@@ -4,9 +4,28 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+/**
+ * `pertemuan_ke` is the meeting number WITHIN one stage (e.g. "pertemuan
+ * ke-2 untuk tahap Bab 4-5"), not a whole-thesis counter — a stage is
+ * commonly revisited many times before it's approved.
+ */
+async function nextPertemuanKe(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  skripsiId: string,
+  stageId: string
+) {
+  const { count } = await supabase
+    .from("bimbingan")
+    .select("id", { count: "exact", head: true })
+    .eq("skripsi_id", skripsiId)
+    .eq("stage_id", stageId);
+  return (count ?? 0) + 1;
+}
+
 /** Mahasiswa mengajukan sesi bimbingan baru (status: diajukan). */
 const requestSchema = z.object({
   skripsiId: z.string().uuid(),
+  stageId: z.string().uuid(),
   topik: z.string().min(3),
   tanggal: z.string(),
   dosenId: z.string().uuid(),
@@ -16,6 +35,7 @@ const requestSchema = z.object({
 export async function requestBimbinganAction(formData: FormData) {
   const parsed = requestSchema.parse({
     skripsiId: formData.get("skripsiId"),
+    stageId: formData.get("stageId"),
     topik: formData.get("topik"),
     tanggal: formData.get("tanggal"),
     dosenId: formData.get("dosenId"),
@@ -23,16 +43,13 @@ export async function requestBimbinganAction(formData: FormData) {
   });
 
   const supabase = await createClient();
-
-  const { count } = await supabase
-    .from("bimbingan")
-    .select("id", { count: "exact", head: true })
-    .eq("skripsi_id", parsed.skripsiId);
+  const pertemuan_ke = await nextPertemuanKe(supabase, parsed.skripsiId, parsed.stageId);
 
   const { error } = await supabase.from("bimbingan").insert({
     skripsi_id: parsed.skripsiId,
     dosen_id: parsed.dosenId,
-    pertemuan_ke: (count ?? 0) + 1,
+    stage_id: parsed.stageId,
+    pertemuan_ke,
     tanggal: parsed.tanggal,
     topik: parsed.topik,
     status: "diajukan",
@@ -94,6 +111,7 @@ export async function completeBimbinganAction(formData: FormData) {
 /** Dosen langsung mencatat sesi bimbingan yang sudah terjadi (offline). */
 const logSchema = z.object({
   skripsiId: z.string().uuid(),
+  stageId: z.string().uuid(),
   mahasiswaId: z.string().uuid(),
   dosenId: z.string().uuid(),
   tanggal: z.string(),
@@ -105,6 +123,7 @@ const logSchema = z.object({
 export async function logBimbinganAction(formData: FormData) {
   const parsed = logSchema.parse({
     skripsiId: formData.get("skripsiId"),
+    stageId: formData.get("stageId"),
     mahasiswaId: formData.get("mahasiswaId"),
     dosenId: formData.get("dosenId"),
     tanggal: formData.get("tanggal"),
@@ -114,16 +133,13 @@ export async function logBimbinganAction(formData: FormData) {
   });
 
   const supabase = await createClient();
-
-  const { count } = await supabase
-    .from("bimbingan")
-    .select("id", { count: "exact", head: true })
-    .eq("skripsi_id", parsed.skripsiId);
+  const pertemuan_ke = await nextPertemuanKe(supabase, parsed.skripsiId, parsed.stageId);
 
   const { error } = await supabase.from("bimbingan").insert({
     skripsi_id: parsed.skripsiId,
     dosen_id: parsed.dosenId,
-    pertemuan_ke: (count ?? 0) + 1,
+    stage_id: parsed.stageId,
+    pertemuan_ke,
     tanggal: parsed.tanggal,
     topik: parsed.topik,
     catatan_revisi: parsed.catatanRevisi,

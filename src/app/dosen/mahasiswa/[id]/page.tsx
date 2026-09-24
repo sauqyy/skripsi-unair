@@ -5,9 +5,10 @@ import { ProgressTracker } from "@/components/progress-tracker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button, LinkButton } from "@/components/ui/button";
-import { Input, Label, Textarea } from "@/components/ui/input";
+import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import { DownloadDocumentButton } from "@/components/download-document-button";
 import { completeBimbinganAction, logBimbinganAction } from "@/lib/actions/bimbingan-actions";
+import { BimbinganHistoryByStage, type BimbinganEntry } from "@/components/bimbingan-history";
 import { notFound, redirect } from "next/navigation";
 
 export default async function DosenMahasiswaDetailPage({
@@ -39,17 +40,33 @@ export default async function DosenMahasiswaDetailPage({
 
   const redirectPath = `/dosen/mahasiswa/${id}`;
 
-  const [{ data: documents }, { data: bimbinganList }] = await Promise.all([
+  const [{ data: documents }, { data: bimbinganList }, { data: stages }] = await Promise.all([
     skripsi
       ? supabase.from("documents").select("*").eq("skripsi_id", skripsi.id).order("versi", { ascending: false })
       : Promise.resolve({ data: [] as never[] }),
     skripsi
-      ? supabase.from("bimbingan").select("*").eq("skripsi_id", skripsi.id).order("pertemuan_ke", { ascending: false })
+      ? supabase
+          .from("bimbingan")
+          .select("*, profiles!bimbingan_dosen_id_fkey(nama)")
+          .eq("skripsi_id", skripsi.id)
+          .order("pertemuan_ke", { ascending: false })
       : Promise.resolve({ data: [] as never[] }),
+    supabase.from("stages").select("*").order("urutan"),
   ]);
 
   const progressRows = skripsi ? await getProgressRows(skripsi.id) : [];
   const totalSelesai = (bimbinganList ?? []).filter((b) => b.status === "selesai").length;
+
+  const bimbinganEntries: BimbinganEntry[] = (bimbinganList ?? []).map((b) => ({
+    id: b.id,
+    stage_id: b.stage_id,
+    pertemuan_ke: b.pertemuan_ke,
+    tanggal: b.tanggal,
+    dosenNama: (b.profiles as unknown as { nama: string } | null)?.nama ?? "-",
+    topik: b.topik,
+    catatan_revisi: b.catatan_revisi,
+    status: b.status,
+  }));
 
   return (
     <div className="space-y-6">
@@ -127,22 +144,14 @@ export default async function DosenMahasiswaDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle>Riwayat Bimbingan — total {totalSelesai} kali selesai</CardTitle>
+              <CardTitle>Riwayat Bimbingan per Tahap — total {totalSelesai} kali selesai</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {(bimbinganList ?? []).map((b) => (
-                <div key={b.id} className="rounded-md border border-slate-100 p-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium text-slate-900">
-                      Pertemuan ke-{b.pertemuan_ke} · {b.tanggal}
-                    </p>
-                    <Badge tone={b.status === "selesai" ? "green" : b.status === "ditolak" ? "red" : "yellow"}>
-                      {b.status}
-                    </Badge>
-                  </div>
-                  {b.topik && <p className="mt-1 text-slate-600">Topik: {b.topik}</p>}
-
-                  {b.status === "diajukan" ? (
+            <CardContent>
+              <BimbinganHistoryByStage
+                stages={stages ?? []}
+                entries={bimbinganEntries}
+                renderActions={(b) =>
+                  b.status === "diajukan" ? (
                     <form action={completeBimbinganAction} className="mt-2 space-y-2">
                       <input type="hidden" name="bimbinganId" value={b.id} />
                       <input type="hidden" name="mahasiswaId" value={id} />
@@ -161,16 +170,9 @@ export default async function DosenMahasiswaDetailPage({
                         </Button>
                       </div>
                     </form>
-                  ) : (
-                    b.catatan_revisi && (
-                      <p className="mt-1 text-slate-600">Catatan revisi: {b.catatan_revisi}</p>
-                    )
-                  )}
-                </div>
-              ))}
-              {(!bimbinganList || bimbinganList.length === 0) && (
-                <p className="text-sm text-slate-400">Belum ada riwayat bimbingan.</p>
-              )}
+                  ) : null
+                }
+              />
             </CardContent>
           </Card>
 
@@ -187,6 +189,21 @@ export default async function DosenMahasiswaDetailPage({
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
+                    <Label htmlFor="stageId">Tahap yang Dibahas</Label>
+                    <Select
+                      id="stageId"
+                      name="stageId"
+                      required
+                      defaultValue={skripsi.current_stage_id ?? ""}
+                    >
+                      {(stages ?? []).map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.urutan}. {s.nama}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div>
                     <Label htmlFor="tanggal">Tanggal Bimbingan</Label>
                     <Input
                       id="tanggal"
@@ -196,10 +213,10 @@ export default async function DosenMahasiswaDetailPage({
                       defaultValue={new Date().toISOString().slice(0, 10)}
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="topik">Topik</Label>
-                    <Input id="topik" name="topik" required placeholder="Mis. Revisi Bab 3" />
-                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="topik">Topik</Label>
+                  <Input id="topik" name="topik" required placeholder="Mis. Revisi Bab 3" />
                 </div>
                 <div>
                   <Label htmlFor="catatanRevisi">Catatan Revisi</Label>

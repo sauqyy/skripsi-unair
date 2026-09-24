@@ -23,16 +23,18 @@ export async function GET(
     return NextResponse.json({ error: "Tidak ditemukan atau tidak diizinkan." }, { status: 404 });
   }
 
-  const { data: assignments } = await supabase
-    .from("bimbingan_assignments")
-    .select("*, profiles!bimbingan_assignments_dosen_id_fkey(nama)")
-    .eq("mahasiswa_id", skripsi.mahasiswa_id);
-
-  const { data: bimbinganList } = await supabase
-    .from("bimbingan")
-    .select("*, profiles!bimbingan_dosen_id_fkey(nama)")
-    .eq("skripsi_id", skripsiId)
-    .order("pertemuan_ke", { ascending: true });
+  const [{ data: assignments }, { data: bimbinganList }, { data: stages }] = await Promise.all([
+    supabase
+      .from("bimbingan_assignments")
+      .select("*, profiles!bimbingan_assignments_dosen_id_fkey(nama)")
+      .eq("mahasiswa_id", skripsi.mahasiswa_id),
+    supabase
+      .from("bimbingan")
+      .select("*, profiles!bimbingan_dosen_id_fkey(nama)")
+      .eq("skripsi_id", skripsiId)
+      .order("pertemuan_ke", { ascending: true }),
+    supabase.from("stages").select("*").order("urutan"),
+  ]);
 
   const mahasiswa = skripsi.profiles as unknown as {
     nama: string;
@@ -45,13 +47,19 @@ export async function GET(
     nama: (a.profiles as unknown as { nama: string } | null)?.nama ?? "-",
   }));
 
-  const riwayat = (bimbinganList ?? []).map((b) => ({
-    pertemuanKe: b.pertemuan_ke,
-    tanggal: b.tanggal,
-    dosen: (b.profiles as unknown as { nama: string } | null)?.nama ?? "-",
-    topik: b.topik ?? "-",
-    catatanRevisi: b.catatan_revisi ?? "-",
-  }));
+  const stageById = new Map((stages ?? []).map((s) => [s.id, s]));
+
+  const riwayat = (bimbinganList ?? [])
+    .map((b) => ({
+      tahap: stageById.get(b.stage_id)?.nama ?? "-",
+      tahapUrutan: stageById.get(b.stage_id)?.urutan ?? 0,
+      pertemuanKe: b.pertemuan_ke,
+      tanggal: b.tanggal,
+      dosen: (b.profiles as unknown as { nama: string } | null)?.nama ?? "-",
+      topik: b.topik ?? "-",
+      catatanRevisi: b.catatan_revisi ?? "-",
+    }))
+    .sort((a, b) => a.tahapUrutan - b.tahapUrutan || a.pertemuanKe - b.pertemuanKe);
 
   const buffer = await renderToBuffer(
     <KartuBimbinganDocument

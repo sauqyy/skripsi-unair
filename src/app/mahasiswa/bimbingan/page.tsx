@@ -1,10 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/get-current-profile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Button, LinkButton } from "@/components/ui/button";
 import { requestBimbinganAction } from "@/lib/actions/bimbingan-actions";
+import { BimbinganHistoryByStage, type BimbinganEntry } from "@/components/bimbingan-history";
 
 export default async function MahasiswaBimbinganPage() {
   const profile = await getCurrentProfile();
@@ -12,14 +12,17 @@ export default async function MahasiswaBimbinganPage() {
 
   const { data: skripsi } = await supabase
     .from("skripsi")
-    .select("id")
+    .select("id, current_stage_id")
     .eq("mahasiswa_id", profile!.id)
     .maybeSingle();
 
-  const { data: assignments } = await supabase
-    .from("bimbingan_assignments")
-    .select("*, profiles!bimbingan_assignments_dosen_id_fkey(nama)")
-    .eq("mahasiswa_id", profile!.id);
+  const [{ data: assignments }, { data: stages }] = await Promise.all([
+    supabase
+      .from("bimbingan_assignments")
+      .select("*, profiles!bimbingan_assignments_dosen_id_fkey(nama)")
+      .eq("mahasiswa_id", profile!.id),
+    supabase.from("stages").select("*").order("urutan"),
+  ]);
 
   if (!skripsi) {
     return (
@@ -39,6 +42,17 @@ export default async function MahasiswaBimbinganPage() {
 
   const totalSelesai = (bimbinganList ?? []).filter((b) => b.status === "selesai").length;
   const redirectPath = "/mahasiswa/bimbingan";
+
+  const entries: BimbinganEntry[] = (bimbinganList ?? []).map((b) => ({
+    id: b.id,
+    stage_id: b.stage_id,
+    pertemuan_ke: b.pertemuan_ke,
+    tanggal: b.tanggal,
+    dosenNama: (b.profiles as unknown as { nama: string } | null)?.nama ?? "-",
+    topik: b.topik,
+    catatan_revisi: b.catatan_revisi,
+    status: b.status,
+  }));
 
   return (
     <div className="space-y-6">
@@ -79,14 +93,26 @@ export default async function MahasiswaBimbinganPage() {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="tanggal">Tanggal Diusulkan</Label>
-                  <Input id="tanggal" name="tanggal" type="date" required />
+                  <Label htmlFor="stageId">Tahap yang Dibahas</Label>
+                  <Select id="stageId" name="stageId" required defaultValue={skripsi.current_stage_id ?? ""}>
+                    {(stages ?? []).map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.urutan}. {s.nama}
+                      </option>
+                    ))}
+                  </Select>
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="topik">Topik yang Ingin Dibahas</Label>
-                <Input id="topik" name="topik" required placeholder="Mis. Diskusi metodologi penelitian" />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="tanggal">Tanggal Diusulkan</Label>
+                  <Input id="tanggal" name="tanggal" type="date" required />
+                </div>
+                <div>
+                  <Label htmlFor="topik">Topik yang Ingin Dibahas</Label>
+                  <Input id="topik" name="topik" required placeholder="Mis. Diskusi metodologi penelitian" />
+                </div>
               </div>
 
               <Button type="submit">Ajukan</Button>
@@ -97,32 +123,10 @@ export default async function MahasiswaBimbinganPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Riwayat Bimbingan ({bimbinganList?.length ?? 0})</CardTitle>
+          <CardTitle>Riwayat Bimbingan per Tahap</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
-          {(!bimbinganList || bimbinganList.length === 0) && (
-            <p className="text-sm text-slate-400">Belum ada riwayat bimbingan.</p>
-          )}
-          {(bimbinganList ?? []).map((b) => {
-            const dosen = b.profiles as unknown as { nama: string } | null;
-            return (
-              <div key={b.id} className="rounded-md border border-slate-100 p-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <p className="font-medium text-slate-900">
-                    Pertemuan ke-{b.pertemuan_ke} · {b.tanggal}
-                  </p>
-                  <Badge tone={b.status === "selesai" ? "green" : b.status === "ditolak" ? "red" : "yellow"}>
-                    {b.status}
-                  </Badge>
-                </div>
-                <p className="mt-1 text-slate-600">Dosen: {dosen?.nama}</p>
-                {b.topik && <p className="mt-1 text-slate-600">Topik: {b.topik}</p>}
-                {b.catatan_revisi && (
-                  <p className="mt-1 text-slate-600">Catatan revisi: {b.catatan_revisi}</p>
-                )}
-              </div>
-            );
-          })}
+        <CardContent>
+          <BimbinganHistoryByStage stages={stages ?? []} entries={entries} />
         </CardContent>
       </Card>
     </div>

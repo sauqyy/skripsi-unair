@@ -171,6 +171,7 @@ export interface Database {
           id: string;
           skripsi_id: string;
           dosen_id: string;
+          stage_id: string;
           pertemuan_ke: number;
           tanggal: string;
           topik: string | null;
@@ -181,6 +182,7 @@ export interface Database {
         Insert: Partial<Database["public"]["Tables"]["bimbingan"]["Row"]> & {
           skripsi_id: string;
           dosen_id: string;
+          stage_id: string;
           pertemuan_ke: number;
         };
         Update: Partial<Database["public"]["Tables"]["bimbingan"]["Row"]>;
@@ -197,6 +199,13 @@ export interface Database {
             columns: ["dosen_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "bimbingan_stage_id_fkey";
+            columns: ["stage_id"];
+            isOneToOne: false;
+            referencedRelation: "stages";
             referencedColumns: ["id"];
           }
         ];
