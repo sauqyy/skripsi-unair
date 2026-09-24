@@ -14,9 +14,19 @@ const roleLabel: Record<UserRole, string> = {
 
 const roleOrder: UserRole[] = ["koordinator", "dosen", "mahasiswa"];
 
-export default async function DevLoginPage() {
-  // Never ship this page live: it signs in as any seeded account with one click.
-  if (process.env.NODE_ENV === "production") notFound();
+export default async function DevLoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ key?: string }>;
+}) {
+  // In production this page only unlocks with the matching DEV_LOGIN_SECRET
+  // query param — it signs in as any seeded account with one click, so it
+  // must stay unreachable to anyone who doesn't have the secret link.
+  const { key } = await searchParams;
+  if (process.env.NODE_ENV === "production") {
+    const secret = process.env.DEV_LOGIN_SECRET;
+    if (!secret || key !== secret) notFound();
+  }
 
   const supabase = createAdminClient();
   const { data: profiles } = await supabase
@@ -40,8 +50,8 @@ export default async function DevLoginPage() {
           <div>
             <h1 className="text-xl font-bold text-slate-900">Quick Login (Development)</h1>
             <p className="text-sm text-slate-500">
-              Klik salah satu akun untuk langsung masuk — tanpa email/password. Halaman ini
-              tidak aktif di production.
+              Klik salah satu akun untuk langsung masuk — tanpa email/password. Jangan bagikan
+              tautan halaman ini.
             </p>
           </div>
         </div>
@@ -60,6 +70,7 @@ export default async function DevLoginPage() {
                   {accounts.map((p) => (
                     <form key={p.id} action={quickLoginAction}>
                       <input type="hidden" name="email" value={p.email} />
+                      <input type="hidden" name="key" value={key ?? ""} />
                       <button
                         type="submit"
                         className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-4 py-3 text-left text-sm transition-colors hover:border-brand-300 hover:bg-brand-50"

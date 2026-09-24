@@ -11,14 +11,21 @@ const DEMO_PASSWORD = "TestPassword123";
 
 const quickLoginSchema = z.object({
   email: z.string().email(),
+  key: z.string().optional(),
 });
 
 export async function quickLoginAction(formData: FormData) {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("Quick login is disabled in production.");
-  }
+  const { email, key } = quickLoginSchema.parse({
+    email: formData.get("email"),
+    key: formData.get("key") ?? undefined,
+  });
 
-  const { email } = quickLoginSchema.parse({ email: formData.get("email") });
+  if (process.env.NODE_ENV === "production") {
+    const secret = process.env.DEV_LOGIN_SECRET;
+    if (!secret || key !== secret) {
+      throw new Error("Quick login is disabled in production.");
+    }
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword({
